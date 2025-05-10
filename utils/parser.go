@@ -99,31 +99,50 @@ func CreateContents(meta *types.Metadata) (text string, markupText string, marku
 
 func createPushText(event *types.PushEvent) string {
 	text := fmt.Sprintf("<b>🔨 %d New commit to</b> <a href='%s'>%s</a>[<code>%s</code>]\n\n<b>Commits:</b>\n",
-        	len(event.Commits),
-        	event.Repo.HTMLURL,
+		len(event.Commits),
+		event.Repo.HTMLURL,
 		event.Repo.FullName,
-        	strings.Replace(event.Ref, "refs/heads/", "", 1),
-    	)
+		strings.Replace(event.Ref, "refs/heads/", "", 1),
+	)
 
-    	for _, commit := range event.Commits {
-        	if strings.Contains(commit.Message, "Signed-off-by:") {
-            		text += fmt.Sprintf("<a href='%s'>%s</a>: %s\n",
-                	commit.Url,
-                	commit.Id[:7],
-                	html.EscapeString(commit.Message),
-            	)
-        	} else {
-            		text += fmt.Sprintf("<a href='%s'>%s</a>: %s by <a href='%s'>%s</a>\n",
-                		commit.Url,
-                		commit.Id[:7],
-                		html.EscapeString(commit.Message),
-                		commit.Author.HTMLURL,
-                		commit.Author.Name,
-            		)
-        	}
-    	}
+	for _, commit := range event.Commits {
+		message := commit.Message
+		lines := strings.Split(message, "\n")
+		mainLines := []string{}
+		signedLines := []string{}
 
-    	return text
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "Signed-off-by:") {
+				signedLines = append(signedLines, line)
+			} else {
+				mainLines = append(mainLines, line)
+			}
+		}
+
+		cleanMessage := html.EscapeString(strings.Join(mainLines, "\n"))
+
+		text += fmt.Sprintf("<a href='%s'>%s</a>: %s\n",
+			commit.Url,
+			commit.Id[:7],
+			cleanMessage,
+		)
+
+		if len(signedLines) > 0 {
+			for _, sig := range signedLines {
+				text += html.EscapeString(sig) + "\n"
+			}
+		} else {
+			text += fmt.Sprintf("by <a href='%s'>%s</a>\n",
+				commit.Author.HTMLURL,
+				html.EscapeString(commit.Author.Name),
+			)
+		}
+
+		text += "\n"
+	}
+
+	return text
 }
 
 func createForkText(event *types.ForkEvent) string {
