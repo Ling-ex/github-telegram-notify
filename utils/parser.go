@@ -105,9 +105,12 @@ func createPushText(event *types.PushEvent) string {
 		strings.Replace(event.Ref, "refs/heads/", "", 1),
 	)
 
+	var allSignedOffSame = true
+	var firstSigned string
+	var cleanedCommits []string
+
 	for _, commit := range event.Commits {
-		message := commit.Message
-		lines := strings.Split(message, "\n")
+		lines := strings.Split(commit.Message, "\n")
 		mainLines := []string{}
 		signedLines := []string{}
 
@@ -119,27 +122,27 @@ func createPushText(event *types.PushEvent) string {
 				mainLines = append(mainLines, line)
 			}
 		}
-
-		cleanMessage := html.EscapeString(strings.Join(mainLines, "\n"))
-
-		text += fmt.Sprintf("<a href='%s'>%s</a>: %s\n",
-			commit.Url,
-			commit.Id[:7],
-			cleanMessage,
-		)
-
 		if len(signedLines) > 0 {
-			for _, sig := range signedLines {
-				text += html.EscapeString(sig) + "\n"
+			if firstSigned == "" {
+				firstSigned = signedLines[0]
+			} else if signedLines[0] != firstSigned {
+				allSignedOffSame = false
 			}
-		} else {
-			text += fmt.Sprintf("by <a href='%s'>%s</a>\n",
-				commit.Author.HTMLURL,
-				html.EscapeString(commit.Author.Name),
-			)
 		}
 
-		text += "\n"
+		cleanMsg := html.EscapeString(strings.Join(mainLines, "\n"))
+		cleanBlock := fmt.Sprintf("<a href='%s'>%s</a>: %s", commit.Url, commit.Id[:7], cleanMsg)
+		if !allSignedOffSame && len(signedLines) > 0 {
+			for _, sig := range signedLines {
+				cleanBlock += "\n" + html.EscapeString(sig)
+			}
+		}
+
+		cleanedCommits = append(cleanedCommits, cleanBlock)
+	}
+	text += strings.Join(cleanedCommits, "\n\n") + "\n\n"
+	if allSignedOffSame && firstSigned != "" {
+		text += html.EscapeString(firstSigned) + "\n"
 	}
 
 	return text
