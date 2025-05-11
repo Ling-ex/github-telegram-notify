@@ -130,7 +130,7 @@ func createPushText(event *types.PushEvent) string {
 			}
 		}
 
-		cleanMsg := html.EscapeString(strings.Join(mainLines, "\n"))
+		cleanMsg := html.EscapeString(strings.Join(mainLines, " "))
 		cleanBlock := fmt.Sprintf("<a href='%s'>%s</a>: %s", commit.Url, commit.Id[:7], cleanMsg)
 		if !allSignedOffSame && len(signedLines) > 0 {
 			for _, sig := range signedLines {
@@ -140,7 +140,7 @@ func createPushText(event *types.PushEvent) string {
 
 		cleanedCommits = append(cleanedCommits, cleanBlock)
 	}
-	text += strings.Join(cleanedCommits, "\n\n") + "\n\n"
+	text += strings.Join(cleanedCommits, "\n") + "\n\n"
 	if allSignedOffSame && firstSigned != "" {
 		text += html.EscapeString(firstSigned) + "\n"
 	}
